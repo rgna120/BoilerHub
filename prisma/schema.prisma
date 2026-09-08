@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String            @id @default(uuid())
+  casUsername String            @unique
+  casPassword String            // Encrypted in production
+  courses     Course[]
+  preferences UserPreferences?
+}
+
+model UserPreferences {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  pinnedDining   String[] @default(["Sushi Boss at Meredith South", "Earhart Dining Court"])
+  pinnedCourses  String[] @default(["CS 18000", "MA 16500", "STAT 11300"])
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  title       String
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  assignments Assignment[]
+}
+
+model Assignment {
+  id       String @id @default(uuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+  title    String
+  grade    String?
+}

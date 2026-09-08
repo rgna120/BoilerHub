@@ -1,0 +1,16 @@
+{
+  "name": "BoilerHub",
+  "short_name": "BoilerHub",
+  "description": "Unified dashboard for Purdue students",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#CEB888",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
