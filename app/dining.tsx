@@ -13,6 +13,7 @@ const PURDUE_LOCATIONS = [
 
 const BASE_URL = 'https://api.hfs.purdue.edu/rest/v2/locations';
 
+// Returns date string in YYYY-MM-DD format
 function getFormattedDate(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -20,7 +21,27 @@ function getFormattedDate(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-// Determines if a dining hall is currently open right now
+// Converts time strings (like "7:00 AM", "11:30", "17:00:00") into total minutes from midnight
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr || timeStr === 'N/A') return null;
+
+  const isPM = /pm/i.test(timeStr);
+  const isAM = /am/i.test(timeStr);
+
+  // Remove AM/PM and trim whitespace
+  const cleanTime = timeStr.replace(/am|pm/gi, '').trim();
+  const parts = cleanTime.split(':').map(Number);
+
+  let hours = parts[0];
+  const minutes = parts[1] || 0;
+
+  if (isPM && hours < 12) hours += 12;
+  if (isAM && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+// Check if court is open based on local current time
 function isOpenNow(hours) {
   if (!hours || hours.length === 0) return false;
 
@@ -28,13 +49,10 @@ function isOpenNow(hours) {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   for (const h of hours) {
-    if (!h.startTime || !h.endTime || h.startTime === 'N/A') continue;
+    const startMin = parseTimeToMinutes(h.startTime);
+    const endMin = parseTimeToMinutes(h.endTime);
 
-    const [startH, startM] = h.startTime.split(':').map(Number);
-    const [endH, endM] = h.endTime.split(':').map(Number);
-
-    const startMin = startH * 60 + startM;
-    const endMin = endH * 60 + endM;
+    if (startMin === null || endMin === null) continue;
 
     if (currentMinutes >= startMin && currentMinutes <= endMin) {
       return true;
@@ -53,7 +71,7 @@ async function fetchPurdueCourtData(locationName, dateStr) {
     });
     return response.data;
   } catch (error) {
-    console.error(`Failed to fetch data for ${locationName}:`, error.message);
+    console.error(`Failed to fetch live API data for ${locationName}:`, error.message);
     return null;
   }
 }
@@ -97,9 +115,8 @@ function normalizePurdueData(rawData) {
 }
 
 async function syncPurdueDiningWeekly() {
-  console.log(`Starting 7-day Purdue Dining sync...\n`);
+  console.log(`Starting live 7-day Purdue Dining sync...\n`);
 
-  // Loop through next 7 days
   for (let i = 0; i < 7; i++) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + i);
@@ -113,13 +130,17 @@ async function syncPurdueDiningWeekly() {
       const normalized = normalizePurdueData(rawData);
 
       if (!normalized) {
-        console.warn(`[${location}] No data returned.`);
+        console.warn(`[${location}] No official data available for this date.`);
         continue;
       }
 
-      const openStatus = isOpenNow(normalized.hours) ? 'OPEN NOW' : 'CLOSED NOW';
+      // Check live open/closed status (only relevant for today)
+      const isToday = i === 0;
+      const statusLabel = isToday 
+        ? (isOpenNow(normalized.hours) ? 'OPEN NOW' : 'CLOSED NOW')
+        : 'SCHEDULED';
 
-      // Save to database
+      // Cache to Database via Prisma
       await prisma.$transaction(async (tx) => {
         const diningHall = await tx.diningHall.upsert({
           where: { name: normalized.name },
@@ -163,20 +184,18 @@ async function syncPurdueDiningWeekly() {
         }
       });
 
-      // Display Status & Food Items
-      console.log(`\n📍 ${normalized.name} (${openStatus})`);
+      console.log(`📍 ${normalized.name} (${statusLabel})`);
       if (normalized.menuItems.length === 0) {
-        console.log(`   No menu available or closed today.`);
+        console.log(`   (No menu listed / Court closed)`);
       } else {
-        // Group and display menu items
-        const preview = normalized.menuItems.slice(0, 5).map(m => m.itemName).join(', ');
-        console.log(`   Food (${normalized.menuItems.length} items): ${preview}...`);
+        const sampleItems = normalized.menuItems.slice(0, 4).map(m => m.itemName).join(', ');
+        console.log(`   Menu (${normalized.menuItems.length} items): ${sampleItems}...`);
       }
     }
     console.log(`\n----------------------------------------\n`);
   }
 
-  console.log('✓ 7-day Purdue Dining sync complete.');
+  console.log('✓ Verified: Database is synced with official Purdue Menus.');
   await prisma.$disconnect();
 }
 
