@@ -73,3 +73,9 @@ Validation: `node --check lib/brightspace.mjs` and
 
 References: [Puppeteer page interactions](https://pptr.dev/guides/page-interactions)
 and [authentication-state sensitivity](https://playwright.dev/docs/auth).
+
+The redesigned dashboard deliberately shows a disabled sync panel and does not
+collect credentials: this repository has no student-session authentication yet.
+The protected server-to-server endpoint remains available to trusted callers.
+Enable the browser flow only after adding student authentication and render the
+returned `{ name, url }` courses in place of the explicitly labeled sample data.
