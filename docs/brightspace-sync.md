@@ -74,8 +74,33 @@ Validation: `node --check lib/brightspace.mjs` and
 References: [Puppeteer page interactions](https://pptr.dev/guides/page-interactions)
 and [authentication-state sensitivity](https://playwright.dev/docs/auth).
 
-The redesigned dashboard deliberately shows a disabled sync panel and does not
-collect credentials: this repository has no student-session authentication yet.
 The protected server-to-server endpoint remains available to trusted callers.
-Enable the browser flow only after adding student authentication and render the
-returned `{ name, url }` courses in place of the explicitly labeled sample data.
+The dashboard now has a separate local-only interactive browser flow that does
+not collect credentials. See [interactive connections](academic-connections.md).
+A hosted student-facing deployment still requires application authentication.
+
+## Run the username/password scraper directly
+
+Set the server environment variables above, then run:
+
+```bash
+npm run scrape:brightspace
+```
+
+The script prompts for your username and hides password input. It writes course
+JSON to stdout and safe error codes to stderr. For non-interactive use, pass a JSON
+object with `username` and `password` on stdin from a trusted process; do not place
+passwords in command arguments, source files, or shell history. The standalone
+script reads the process environment; it does not automatically load `.env.local`.
+On a Node version supporting `--env-file`, use:
+
+```bash
+node --env-file=.env.local scripts/scrape-brightspace.mjs
+```
+
+The same `scrapeBrightspace({ username, password }, config)` function is used by
+`POST /api/academic/sync`. CAS input selectors default to `#username`, `#password`,
+and `button[type="submit"]`. Configure the current-term list selectors for the
+actual dashboard; this generic script reads the rendered list, not every term or
+unloaded page. A CAS MFA challenge that prevents completion returns an
+authentication error. No live institution login has been verified.
