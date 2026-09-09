@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, LockKeyhole } from 'lucide-react';
 import AssignmentPlanner from './AssignmentPlanner';
 import CourseGradebook from './CourseGradebook';
 import type { Assignment, ConnectionView, Provider } from '@/lib/academic/types';
+import type { CampusEvent } from '@/lib/events';
 
 const messages: Record<string, string> = {
   FORBIDDEN: 'Open BoilerHub at http://127.0.0.1:3000 and try again. The connection must come from the configured local address.',
@@ -119,13 +120,13 @@ function Connection({ provider, onView }: { provider: Provider; onView: (provide
     </div>}
   </section>;
 }
-export default function AcademicConnections() {
+export default function AcademicConnections({ selectedEvents = [] }: { selectedEvents?: CampusEvent[] }) {
   const [sources, setSources] = useState<Partial<Record<Provider, ConnectionView>>>({});
   const onView = useCallback((provider: Provider, view: ConnectionView) => {
     setSources(previous => ({ ...previous, [provider]: view }));
   }, []);
   return <section id="academic-connections" className="mt-12" aria-labelledby="academic-heading">
-    <AssignmentPlanner sources={sources} />
+    <AssignmentPlanner sources={sources} selectedEvents={selectedEvents} />
     <h2 id="academic-heading" className="font-display text-2xl font-bold">Your academic connections</h2>
     <p className="mb-5 mt-2 text-sm text-black/60">Local prototype: login windows open on the computer running BoilerHub. Keep them open while connected. Your tracker updates after each successful sync.</p>
     <div className="space-y-5"><Connection provider="brightspace" onView={onView} /><Connection provider="gradescope" onView={onView} /></div>
