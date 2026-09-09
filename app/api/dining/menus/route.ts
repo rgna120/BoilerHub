@@ -163,10 +163,16 @@ export async function GET() {
   }
 
   let indexed = false;
+  let indexingError: string | null = null;
   if (errors.length === 0) {
-    await initializeAndIndexDiningMenus(date, toSearchDocuments(menus));
-    indexed = true;
+    try {
+      await initializeAndIndexDiningMenus(date, toSearchDocuments(menus));
+      indexed = true;
+    } catch (error) {
+      console.error('Dining menu indexing error:', error);
+      indexingError = 'Menus loaded, but Typesense indexing is unavailable on this machine.';
+    }
   }
 
-  return NextResponse.json({ date, menus, errors, indexed });
+  return NextResponse.json({ date, menus, errors, indexed, indexingError });
 }

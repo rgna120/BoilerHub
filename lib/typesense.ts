@@ -1,8 +1,8 @@
 import Typesense from 'typesense';
 
-const TYPESENSE_HOST = process.env.NEXT_PUBLIC_TYPESENSE_HOST || process.env.TYPESENSE_HOST || 'localhost';
-const TYPESENSE_PORT = process.env.NEXT_PUBLIC_TYPESENSE_PORT ? parseInt(process.env.NEXT_PUBLIC_TYPESENSE_PORT) : 443;
-const TYPESENSE_PROTOCOL = process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL || 'https';
+const TYPESENSE_HOST = process.env.TYPESENSE_HOST || process.env.NEXT_PUBLIC_TYPESENSE_HOST || 'localhost';
+const TYPESENSE_PORT = Number(process.env.TYPESENSE_PORT || process.env.NEXT_PUBLIC_TYPESENSE_PORT || 443);
+const TYPESENSE_PROTOCOL = process.env.TYPESENSE_PROTOCOL || process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL || 'https';
 const TYPESENSE_ADMIN_API_KEY = process.env.TYPESENSE_ADMIN_API_KEY || '';
 
 export const typesenseServerClient = new Typesense.Client({
