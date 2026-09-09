@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "dev:academic": "ACADEMIC_LOCAL_MODE=true ACADEMIC_APP_ORIGIN=http://127.0.0.1:3000 next dev --hostname 127.0.0.1 --port 3000",
+    "test:academic": "node -r ./tests/register.cjs --test tests/academic.test.ts",
+    "test:academic:browser": "node -r ./tests/register.cjs --test tests/academic-browser.test.ts",
+    "scrape:brightspace": "node scripts/scrape-brightspace.mjs",
+    "test:events": "node -r ./tests/register.cjs --test tests/events.test.ts"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^9.7.1",
