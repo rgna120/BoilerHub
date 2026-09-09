@@ -36,12 +36,12 @@ export async function GET(request: Request) {
         {
           collection: 'DiningMenu',
           q: query,
-          query_by: 'title,description,location,meal,station,category',
-          query_by_weights: 'title,description,location,meal,station,category',
+          query_by: 'title',
+          query_by_weights: 'title',
           facet_by: 'category,location,meal',
           per_page: autocomplete ? 5 : 100,
           prioritize_exact_match: true,
-          highlight_full_fields: 'title,description,location,meal,station',
+          highlight_full_fields: 'title',
         },
         {
           collection: 'CampusEvents',
