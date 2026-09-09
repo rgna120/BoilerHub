@@ -1,7 +1,6 @@
-import AcademicConnections from './components/AcademicConnections';
-import { CalendarDays, CircleUserRound, LockKeyhole } from "lucide-react";
 "use client";
 
+import AcademicConnections from "./components/AcademicConnections";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, BookOpen, CalendarDays, Check, CircleUserRound, LockKeyhole, RefreshCw, Utensils } from "lucide-react";
 
