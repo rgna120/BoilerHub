@@ -9,9 +9,14 @@ type SearchHit = {
     id: string;
     title: string;
     category: string;
-    description: string;
-    location: string;
+    description?: string;
+    location?: string;
+    url?: string;
+    startsAt?: string;
+    endsAt?: string;
+    organizer?: string;
   };
+  highlight?: Record<string, { snippet?: string; matched_tokens?: string[] }>;
 };
 
 type DiningMenu = {
@@ -28,7 +33,7 @@ type DiningMenu = {
   }>;
 };
 
-type SearchFilter = "all" | "dining-halls" | "menu-items" | "buildings" | "courses";
+type SearchFilter = "all" | "dining-halls" | "menu-items" | "events" | "buildings" | "courses";
 
 const courses = [
   { code: "CS 18000", name: "Problem Solving and OOP", next: "Project 2 due Friday", color: "coral" },
@@ -45,6 +50,8 @@ export default function Dashboard() {
   const [diningError, setDiningError] = useState("");
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
   const [selectedDiningLocation, setSelectedDiningLocation] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [facets, setFacets] = useState<Record<string, Array<{ value: string; count: number }>>>({});
 
   async function loadDiningMenus() {
     setDiningLoading(true);
@@ -86,6 +93,10 @@ export default function Dashboard() {
         });
         const data = await response.json();
         setResults(data.hits || []);
+        setSuggestions(data.suggestions || []);
+        setFacets(data.facets || {});
+        setSuggestions([]);
+        setFacets({});
       } catch (error) {
         if ((error as Error).name !== "AbortError") setResults([]);
       } finally {
@@ -106,12 +117,20 @@ export default function Dashboard() {
 
     if (searchFilter === "dining-halls") return document.category === "dining-location";
     if (searchFilter === "menu-items") return document.category === "dining-menu";
+      if (searchFilter === "events") return document.category === "event";
     if (searchFilter === "buildings") return document.category === "building";
     if (searchFilter === "courses") return document.category === "course";
     return true;
   });
 
   const selectedDiningMenu = diningMenus.find((menu) => menu.location === selectedDiningLocation);
+
+  function highlightedText(hit: SearchHit, field: "title" | "description" | "location") {
+    const value = hit.highlight?.[field]?.snippet || hit.document[field] || "";
+    return value.split(/(<mark>.*?<\/mark>)/gi).map((part, index) => part.toLowerCase().startsWith("<mark>")
+      ? <mark key={`${field}-${index}`} className="bg-[#f1d77a]">{part.replace(/<\/?mark>/gi, "")}</mark>
+      : part);
+  }
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f5f2eb] text-[#171717]">
@@ -128,13 +147,14 @@ export default function Dashboard() {
             <section className="mb-10" aria-labelledby="search-heading">
               <label id="search-heading" className="eyebrow" htmlFor="campus-search">Search campus</label>
               <input id="campus-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try dining, CS 18000, or Union" className="mt-3 w-full rounded-2xl border border-black/10 bg-white/75 px-5 py-4 text-base outline-none transition focus:border-[#c69214] focus:ring-2 focus:ring-[#c69214]/20" />
+              {query && !searching && suggestions.length > 0 && <div className="mt-2 flex flex-wrap gap-2" aria-label="Search suggestions">{suggestions.slice(0, 5).map((suggestion) => <button key={suggestion} type="button" onClick={() => setQuery(suggestion)} className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs text-black/65 hover:bg-white">{suggestion}</button>)}</div>}
               <div className="mt-3 flex flex-wrap gap-2" aria-label="Search filters">
-                {([["all", "All"], ["dining-halls", "Dining halls"], ["menu-items", "Menu items"], ["buildings", "Buildings"], ["courses", "Courses"]] as Array<[SearchFilter, string]>).map(([value, label]) => <button key={value} type="button" onClick={() => setSearchFilter(value)} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${searchFilter === value ? "border-[#c69214] bg-[#e8d9b9]" : "border-black/10 bg-white/60 hover:bg-white"}`}>{label}</button>)}
+                {([["all", "All"], ["dining-halls", "Dining halls"], ["menu-items", "Menu items"], ["events", "Events"], ["buildings", "Buildings"], ["courses", "Courses"]] as Array<[SearchFilter, string]>).map(([value, label]) => <button key={value} type="button" onClick={() => setSearchFilter(value)} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${searchFilter === value ? "border-[#c69214] bg-[#e8d9b9]" : "border-black/10 bg-white/60 hover:bg-white"}`}>{label}{value !== "all" && <span className="ml-1 text-black/40">{facets.category?.find((facet) => facet.value === (value === "dining-halls" ? "dining-location" : value === "menu-items" ? "dining-menu" : value === "events" ? "event" : value))?.count || ""}</span>}</button>)}
               </div>
               {query && <div className="mt-3 overflow-hidden rounded-2xl border border-black/10 bg-white/75">
                 {searching && <p className="px-5 py-4 text-sm text-black/50">Searching...</p>}
                 {!searching && visibleResults.length === 0 && <p className="px-5 py-4 text-sm text-black/50">No campus results found.</p>}
-                {!searching && visibleResults.map(({ document }) => document.category === "dining-location" ? <button key={document.id} type="button" onClick={() => setSelectedDiningLocation(document.location)} className="block w-full border-b border-black/10 px-5 py-4 text-left transition hover:bg-[#f5f2eb] last:border-0"><div className="flex items-center justify-between gap-4"><h3 className="font-bold">{document.title}</h3><span className="text-xs font-bold uppercase tracking-wider text-black/40">View menu</span></div><p className="mt-1 text-sm text-black/55">{document.description}</p><p className="mt-1 text-xs text-black/40">{document.location}</p></button> : <article key={document.id} className="border-b border-black/10 px-5 py-4 last:border-0"><div className="flex items-center justify-between gap-4"><h3 className="font-bold">{document.title}</h3><span className="text-xs font-bold uppercase tracking-wider text-black/40">{document.category}</span></div><p className="mt-1 text-sm text-black/55">{document.description}</p><p className="mt-1 text-xs text-black/40">{document.location}</p></article>)}
+                {!searching && visibleResults.map((hit) => hit.document.category === "dining-location" ? <button key={hit.document.id} type="button" onClick={() => setSelectedDiningLocation(hit.document.location || "")} className="block w-full border-b border-black/10 px-5 py-4 text-left transition hover:bg-[#f5f2eb] last:border-0"><div className="flex items-center justify-between gap-4"><h3 className="font-bold">{highlightedText(hit, "title")}</h3><span className="text-xs font-bold uppercase tracking-wider text-black/40">View menu</span></div><p className="mt-1 text-sm text-black/55">{highlightedText(hit, "description")}</p><p className="mt-1 text-xs text-black/40">{highlightedText(hit, "location")}</p></button> : hit.document.category === "event" ? <a key={hit.document.id} href={hit.document.url} target="_blank" rel="noreferrer" className="block border-b border-black/10 px-5 py-4 transition hover:bg-[#f5f2eb] last:border-0"><div className="flex items-center justify-between gap-4"><h3 className="font-bold">{highlightedText(hit, "title")}</h3><span className="text-xs font-bold uppercase tracking-wider text-black/40">Event ↗</span></div><p className="mt-1 text-sm text-black/55">{highlightedText(hit, "description")}</p><p className="mt-1 text-xs text-black/40">{highlightedText(hit, "location")} {hit.document.startsAt && `· ${new Date(hit.document.startsAt).toLocaleDateString()}`}</p></a> : <article key={hit.document.id} className="border-b border-black/10 px-5 py-4 last:border-0"><div className="flex items-center justify-between gap-4"><h3 className="font-bold">{highlightedText(hit, "title")}</h3><span className="text-xs font-bold uppercase tracking-wider text-black/40">{hit.document.category}</span></div><p className="mt-1 text-sm text-black/55">{highlightedText(hit, "description")}</p><p className="mt-1 text-xs text-black/40">{highlightedText(hit, "location")}</p></article>)}
               </div>}
               {selectedDiningMenu && <section className="mt-4 rounded-2xl border border-black/10 bg-white/75 p-5" aria-labelledby="selected-menu-heading"><div className="flex items-start justify-between gap-4"><div><p className="eyebrow">Today&apos;s menu</p><h3 id="selected-menu-heading" className="font-display mt-2 text-xl font-bold">{selectedDiningMenu.location}</h3></div><button type="button" onClick={() => setSelectedDiningLocation("")} className="text-sm font-semibold text-black/50 hover:text-black">Close</button></div><div className="mt-4 space-y-4">{selectedDiningMenu.meals.map((meal) => <div key={meal.id}><h4 className="font-bold">{meal.name}</h4><div className="mt-2 space-y-2">{meal.stations.map((station) => <div key={station.name}><p className="text-xs font-bold uppercase tracking-wider text-black/40">{station.name}</p><p className="mt-1 text-sm text-black/65">{station.items.map((item) => item.name).join(" · ") || "No items listed"}</p></div>)}</div></div>)}</div></section>}
             </section>
